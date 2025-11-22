@@ -29,6 +29,9 @@ app.register_blueprint(auth_bp, url_prefix="/auth")
 from routes.purchases import purchases as purchases_bp
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
 
+from routes.sales import sales as sales_bp
+app.register_blueprint(sales_bp, url_prefix="/sales")
+
 @app.route('/')
 def index():
     return "GroceryBag Pro backend running"
