@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import CloudflareVerification from './CloudflareVerification';
+import { login, requestOtp } from '../../authClient';
 
 interface CustomerLoginProps {
   onNext: () => void;
@@ -17,6 +18,7 @@ export default function CustomerLogin({ onNext, onSwitchToAdmin, onSwitchToUser 
   const [showPassword, setShowPassword] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [errors, setErrors] = useState({ phone: '', password: '' });
+  const [demoOtp, setDemoOtp] = useState<string | null>(null);
 
   const validatePhone = (value: string): string => {
     if (!value) return 'Phone number is required';
@@ -60,13 +62,38 @@ export default function CustomerLogin({ onNext, onSwitchToAdmin, onSwitchToUser 
       alert('Please verify you are human');
       return;
     }
-    
-    onNext();
+
+    (async () => {
+      try {
+        const res: any = await login(phone, password);
+        if (res && res.token) {
+          sessionStorage.setItem('loginPhone', phone);
+          if (res.otp) {
+            console.info('Demo OTP (from login):', res.otp);
+            setDemoOtp(String(res.otp));
+            setTimeout(() => setDemoOtp(null), 30000);
+          } else {
+            const otpRes: any = await requestOtp(phone);
+            if (otpRes && otpRes.otp) {
+              console.info('Demo OTP:', otpRes.otp);
+              setDemoOtp(String(otpRes.otp));
+              setTimeout(() => setDemoOtp(null), 30000);
+            }
+          }
+          onNext();
+        } else {
+          alert(res.error || 'Invalid phone or password');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Login failed. Check console.');
+      }
+    })();
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm">
         <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
           {/* Logo and Title */}
           <div className="flex flex-col items-center mb-8">
@@ -76,6 +103,12 @@ export default function CustomerLogin({ onNext, onSwitchToAdmin, onSwitchToUser 
             <h1 className="text-gray-900 text-center mb-1">Customer Login</h1>
             <p className="text-gray-500 text-center">GroceryBag Pro</p>
           </div>
+
+          {demoOtp && (
+            <div className="mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-center">
+              <strong>Demo OTP:</strong> {demoOtp} — visible for 30s for demo/testing
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Phone Number */}

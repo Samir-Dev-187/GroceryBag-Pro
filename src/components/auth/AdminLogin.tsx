@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import CloudflareVerification from './CloudflareVerification';
+import { login, requestOtp } from '../../authClient';
 
 interface AdminLoginProps {
   onNext: () => void;
@@ -19,6 +20,7 @@ export default function AdminLogin({ onNext, onSwitchToUser, onSwitchToCustomer,
   const [showPassword, setShowPassword] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [errors, setErrors] = useState({ phone: '', password: '' });
+  const [demoOtp, setDemoOtp] = useState<string | null>(null);
 
   const validatePhone = (value: string): string => {
     if (!value) return 'Phone number is required';
@@ -62,8 +64,34 @@ export default function AdminLogin({ onNext, onSwitchToUser, onSwitchToCustomer,
       alert('Please verify you are human');
       return;
     }
-    
-    onNext();
+
+    (async () => {
+      try {
+        const res: any = await login(phone, password);
+        if (res && res.token) {
+          sessionStorage.setItem('loginPhone', phone);
+          // If login response already included an OTP (dev mode), use it.
+          if (res.otp) {
+            console.info('Demo OTP (from login):', res.otp);
+            setDemoOtp(String(res.otp));
+            setTimeout(() => setDemoOtp(null), 30000);
+          } else {
+            const otpRes: any = await requestOtp(phone);
+            if (otpRes && otpRes.otp) {
+              console.info('Demo OTP:', otpRes.otp);
+              setDemoOtp(String(otpRes.otp));
+              setTimeout(() => setDemoOtp(null), 30000);
+            }
+          }
+          onNext();
+        } else {
+          alert(res.error || 'Invalid phone or password');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Login failed. Check console.');
+      }
+    })();
   };
 
   return (
@@ -78,6 +106,12 @@ export default function AdminLogin({ onNext, onSwitchToUser, onSwitchToCustomer,
             <h1 className="text-gray-900 text-center mb-1">Admin Login</h1>
             <p className="text-gray-500 text-center">GroceryBag Pro</p>
           </div>
+
+          {demoOtp && (
+            <div className="mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-center">
+              <strong>Demo OTP:</strong> {demoOtp} — visible for 30s for demo/testing
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Phone Number */}

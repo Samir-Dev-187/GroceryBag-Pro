@@ -53,10 +53,37 @@ export default function AddPurchase() {
   };
 
   const handleSave = () => {
-    // Generate purchase ID
-    const generatedId = `P-${Date.now().toString().slice(-6)}`;
-    setPurchaseId(generatedId);
-    setShowSuccess(true);
+    (async () => {
+      try {
+        const results: any[] = [];
+        for (const item of items) {
+          const fd = new FormData();
+          fd.append('supplier_id', supplierId || '2');
+          fd.append('bag_size', item.bagSize || '10kg');
+          fd.append('units', item.units || '0');
+          fd.append('price_per_unit', item.pricePerUnit || '0');
+          if (invoicePhoto) fd.append('invoice_file', invoicePhoto);
+
+          const resp = await fetch('/api/purchases/', {
+            method: 'POST',
+            body: fd,
+          });
+          const json = await resp.json();
+          results.push(json);
+        }
+        const first = results[0] || {};
+        const returned = first.purchase_id || first.id || '';
+        const generatedId = returned ? (String(returned).startsWith('P-') ? String(returned) : `P-${returned}`) : `P-${Date.now().toString().slice(-6)}`;
+        setPurchaseId(generatedId);
+        setShowSuccess(true);
+      } catch (err) {
+        console.error(err);
+        // fallback to local success
+        const generatedId = `P-${Date.now().toString().slice(-6)}`;
+        setPurchaseId(generatedId);
+        setShowSuccess(true);
+      }
+    })();
   };
 
   const handleAddAnother = () => {

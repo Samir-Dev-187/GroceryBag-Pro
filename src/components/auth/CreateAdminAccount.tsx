@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { register } from '../../authClient';
 import { ArrowLeft, Upload, Eye, EyeOff, Check, X, ShoppingBag } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -57,8 +58,19 @@ export default function CreateAdminAccount({ onSuccess, onBack }: CreateAdminAcc
       return;
     }
 
-    const adminId = generateAdminId(fullName);
-    onSuccess({ id: adminId, password });
+    (async () => {
+      try {
+        const res: any = await register(phone, password, 'admin');
+        if (res && res.uid) {
+          onSuccess({ id: res.uid, password });
+        } else {
+          alert(res.error || 'Failed to create admin account');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Registration failed. Check console.');
+      }
+    })();
   };
 
   return (

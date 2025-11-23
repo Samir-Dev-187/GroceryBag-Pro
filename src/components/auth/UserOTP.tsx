@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { verifyOtp } from '../../authClient';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -56,10 +57,23 @@ export default function UserOTP({ onVerified, onBack }: UserOTPProps) {
 
   const handleVerify = () => {
     setIsVerifying(true);
-    setTimeout(() => {
-      setIsVerifying(false);
-      onVerified();
-    }, 1500);
+    (async () => {
+      try {
+        const phone = sessionStorage.getItem('loginPhone') || '';
+        const code = otp.join('');
+        const res: any = await verifyOtp(phone, code);
+        setIsVerifying(false);
+        if (res && res.message === 'OTP verified') {
+          onVerified();
+        } else {
+          alert(res.error || 'Invalid or expired OTP');
+        }
+      } catch (err) {
+        setIsVerifying(false);
+        console.error(err);
+        alert('OTP verification failed');
+      }
+    })();
   };
 
   const handleResend = () => {

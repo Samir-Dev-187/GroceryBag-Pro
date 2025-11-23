@@ -1,0 +1,47 @@
+{
+  "db_file": "C:\\Users\\USER\\OneDrive\\Desktop\\GroceryBag Pro\\data\\grocerybag.db",
+  "db_tables": [
+    "alert",
+    "alerts",
+    "customer",
+    "customers",
+    "otp",
+    "purchase",
+    "purchase_items",
+    "purchases",
+    "sale",
+    "sale_items",
+    "sales",
+    "sqlite_sequence",
+    "supplier",
+    "suppliers",
+    "transaction",
+    "transactions",
+    "user",
+    "users",
+    "users_new"
+  ],
+  "model_tables": [
+    "users",
+    "suppliers",
+    "customers",
+    "purchases",
+    "sales",
+    "transactions",
+    "alerts",
+    "otp"
+  ],
+  "extra_tables": [
+    "alert",
+    "customer",
+    "purchase",
+    "purchase_items",
+    "sale",
+    "sale_items",
+    "sqlite_sequence",
+    "supplier",
+    "transaction",
+    "user",
+    "users_new"
+  ]
+}

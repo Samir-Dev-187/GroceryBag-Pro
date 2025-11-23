@@ -60,42 +60,85 @@ def create_purchase():
     if 'supplier_id' not in request.form:
         return jsonify({"error":"supplier_id required"}), 400
 
-    try:
-        supplier_id = int(request.form.get('supplier_id'))
-    except:
-        return jsonify({"error":"supplier_id must be integer"}), 400
-
-    supplier = Supplier.query.get(supplier_id)
+    raw_supplier = request.form.get('supplier_id')
+    supplier = None
+    supplier = None
+    # support numeric PK or external supplier_id string
+    if raw_supplier is None:
+        return jsonify({"error":"supplier_id required"}), 400
+    raw_supplier = str(raw_supplier).strip()
+    if raw_supplier.isdigit():
+        supplier = Supplier.query.get(int(raw_supplier))
+    else:
+        # possible formats: supplier external id like SU-..., or UI prefix like SUP-...
+        candidate = raw_supplier
+        if candidate.startswith('SUP-'):
+            candidate = candidate.replace('SUP-', '')
+        # try exact match on supplier_id or name
+        supplier = Supplier.query.filter((Supplier.supplier_id == raw_supplier) | (Supplier.supplier_id == candidate) | (Supplier.name == raw_supplier)).first()
     if not supplier:
         return jsonify({"error":"supplier not found"}), 404
+    try:
+        bag_size = request.form.get('bag_size', '').strip()
+        units = int(request.form.get('units', 0))
+        price_per_unit = float(request.form.get('price_per_unit', 0.0))
+        total_amount = units * price_per_unit
 
-    bag_size = request.form.get('bag_size', '').strip()
-    units = int(request.form.get('units', 0))
-    price_per_unit = float(request.form.get('price_per_unit', 0.0))
-    total_amount = units * price_per_unit
+        invoice_image_url = None
+        if 'invoice_file' in request.files:
+            file = request.files['invoice_file']
+            if file and allowed_file(file.filename):
+                invoice_image_url = save_invoice_file(file)
+            else:
+                return jsonify({"error":"Invalid or missing invoice_file. Allowed: png,jpg,jpeg,pdf"}), 400
 
-    invoice_image_url = None
-    if 'invoice_file' in request.files:
-        file = request.files['invoice_file']
-        if file and allowed_file(file.filename):
-            invoice_image_url = save_invoice_file(file)
-        else:
-            return jsonify({"error":"Invalid or missing invoice_file. Allowed: png,jpg,jpeg,pdf"}), 400
+        # generate purchase external id: P-XX(month+week)-rand4
+        now = datetime.utcnow()
+        month = now.month
+        week = (now.day - 1) // 7 + 1
+        rand4 = str(uuid.uuid4().int)[:4]
 
-    purchase = Purchase(
-        supplier_id=supplier_id,
-        bag_size=bag_size,
-        units=units,
-        price_per_unit=price_per_unit,
-        total_amount=total_amount,
-        invoice_image=invoice_image_url
-    )
+        purchase = Purchase(
+            supplier_id=supplier.supplier_id or str(supplier.id),
+            bag_size=bag_size,
+            units=units,
+            price_per_unit=price_per_unit,
+            total_amount=total_amount,
+            invoice_image=invoice_image_url
+        )
 
-    db.session.add(purchase)
-    db.session.commit()
+        purchase.purchase_id = f"P-{month:02d}{week}-{rand4}"
 
-    return jsonify({
-        "message":"Purchase created",
-        "purchase_id": purchase.id,
-        "invoice_image": invoice_image_url
-    }), 201
+        db.session.add(purchase)
+        db.session.commit()
+
+        return jsonify({
+            "message":"Purchase created",
+            "id": purchase.id,
+            "purchase_id": purchase.purchase_id,
+            "invoice_image": invoice_image_url
+        }), 201
+    except Exception as ex:
+        # Return JSON error to frontend for easier debugging
+        return jsonify({'error': 'purchase creation failed', 'detail': str(ex)}), 500
+
+
+@purchases.route('/<int:purchase_id>', methods=['PUT'])
+def update_purchase(purchase_id):
+    p = Purchase.query.get(purchase_id)
+    if not p:
+        return jsonify({'error': 'not found'}), 404
+    data = request.form or request.json or {}
+    try:
+        if 'bag_size' in data:
+            p.bag_size = data.get('bag_size')
+        if 'units' in data:
+            p.units = int(data.get('units', p.units))
+        if 'price_per_unit' in data:
+            p.price_per_unit = float(data.get('price_per_unit', p.price_per_unit))
+        p.total_amount = p.units * p.price_per_unit
+        db.session.add(p)
+        db.session.commit()
+        return jsonify({'message': 'Purchase updated', 'id': p.id, 'purchase_id': p.purchase_id})
+    except Exception as ex:
+        return jsonify({'error': 'update failed', 'detail': str(ex)}), 400

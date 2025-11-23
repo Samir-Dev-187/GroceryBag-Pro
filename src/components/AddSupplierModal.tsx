@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { X, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -45,9 +46,28 @@ export default function AddSupplierModal({ open, onClose, onSuccess }: AddSuppli
       return;
     }
 
-    const supplierId = generateSupplierId(name);
-    setGeneratedId(supplierId);
-    setStep('success');
+    (async () => {
+      try {
+        const form = new FormData();
+        form.append('name', name);
+        form.append('phone', phone);
+        form.append('address', email || '');
+        const res = await fetch('/api/suppliers/', { method: 'POST', body: form });
+        const json = await res.json();
+        if (res.status === 201) {
+          // backend may return external supplier_id already formatted (e.g. 'SU-...') or raw id
+          const raw = json.supplier_id || json.id || json.supplierId || json.id;
+          const supplierId = raw && String(raw).startsWith('SU-') ? String(raw) : `SU-${raw}`;
+          setGeneratedId(supplierId);
+          setStep('success');
+        } else {
+          alert(json.error || 'Failed to create supplier');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Failed to create supplier');
+      }
+    })();
   };
 
   const handleClose = () => {

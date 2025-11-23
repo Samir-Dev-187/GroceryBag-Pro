@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { X, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -45,9 +46,27 @@ export default function AddCustomerModal({ open, onClose, onSuccess }: AddCustom
       return;
     }
 
-    const customerId = generateCustomerId(name);
-    setGeneratedId(customerId);
-    setStep('success');
+    (async () => {
+      try {
+        const form = new FormData();
+        form.append('name', name);
+        form.append('phone', phone);
+        form.append('address', email || '');
+        const res = await fetch('/api/customers/', { method: 'POST', body: form });
+        const json = await res.json();
+        if (res.status === 201) {
+          const raw = json.customer_id || json.id || json.customerId || json.id;
+          const customerId = raw && String(raw).startsWith('CU-') ? String(raw) : `CU-${raw}`;
+          setGeneratedId(customerId);
+          setStep('success');
+        } else {
+          alert(json.error || 'Failed to create customer');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Failed to create customer');
+      }
+    })();
   };
 
   const handleClose = () => {
