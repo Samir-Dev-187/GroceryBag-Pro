@@ -4,6 +4,8 @@ from flask import Flask
 from flask_cors import CORS
 from flask import jsonify, request
 from dotenv import load_dotenv
+from flask import Flask, request, jsonify
+from db import get_db, close_db, DB_PATH
 
 load_dotenv()
 
@@ -79,6 +81,10 @@ app.register_blueprint(suppliers_bp, url_prefix="/suppliers")
 # debug endpoints (dev-only)
 from routes.debug import debug_bp
 app.register_blueprint(debug_bp)
+
+from routes.updates import updates as updates_bp
+app.register_blueprint(updates_bp, url_prefix="/updates")
+
 
 @app.route('/')
 def index():
@@ -188,6 +194,16 @@ with app.app_context():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+@app.teardown_appcontext
+def teardown_db(exception):
+    close_db(exception)
+
+# Temporary debug route to confirm DB path used by server
+@app.route("/debug/dbpath", methods=["GET"])
+def debug_dbpath():
+    # returns absolute DB path so we can confirm the server is using the correct file
+    return {"db_path": DB_PATH}
 
 
 # Return JSON for unhandled exceptions on API routes to avoid HTML error pages
