@@ -27,6 +27,7 @@ import Profile from "./components/Profile";
 import CreateAccounts from "./components/CreateAccounts";
 import Layout from "./components/Layout";
 import ChatbotButton from "./components/ChatbotButton";
+import { UpdatesProvider } from './context/UpdatesContext';
 
 type AuthStep =
   | "login"

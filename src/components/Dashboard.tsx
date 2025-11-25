@@ -7,6 +7,7 @@ import RecentPurchases from './dashboard/RecentPurchases';
 import AlertsPanel from './dashboard/AlertsPanel';
 import AlertDetailDrawer from './AlertDetailDrawer';
 import { Alert } from './types';
+import { UpdatesProvider } from '../context/UpdatesContext';
 
 interface DashboardProps {
   userRole: 'admin' | 'user';
